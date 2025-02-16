@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Query, HTTPException, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
 import traceback
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -24,6 +25,15 @@ import aiomysql
 load_dotenv()
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 client = Together(api_key=os.getenv("TOGETHER_API_KEY"))
 
 # MySQL Database configuration
@@ -909,7 +919,7 @@ def insert_reconciliation_summary(summary_data: dict):
         connection.close()
 
 @app.get("/reconciliation_summaries")
-async def get_reconciliation_summaries(
+def get_reconciliation_summaries(
     limit: int = Query(10, description="Number of summaries to retrieve")
 ):
     connection = get_db_connection()
@@ -919,7 +929,7 @@ async def get_reconciliation_summaries(
         cursor.execute(f"SELECT * FROM reconciliation_records ORDER BY transaction_date DESC LIMIT {limit * 10}")
         reconciliation_records = cursor.fetchall()
 
-        llm_summary = await generate_llm_summary(reconciliation_records)
+        llm_summary = generate_llm_summary(reconciliation_records)
         return {"summary": llm_summary}  # Return only the LLM summary
 
     except Error as e:
